@@ -248,5 +248,22 @@ if (php_sapi_name() === 'cli') {
 
 if (empty($url)) $url = '/';
 
+// CORS: answer browser preflights and decorate all API responses.
+// The API library sets the same headers when it initializes, but the
+// preflight OPTIONS request never reaches a controller, so it must be
+// handled here as well.
+if (!empty($_SERVER['HTTP_ORIGIN'])) {
+    header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
+    header('Access-Control-Allow-Credentials: true');
+    header('Vary: Origin');
+    header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Requested-With, X-RateLimit-*');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS');
+
+    if ($method === 'OPTIONS') {
+        http_response_code(200);
+        exit;
+    }
+}
+
 $router->initiate($url, $method);
 ?>

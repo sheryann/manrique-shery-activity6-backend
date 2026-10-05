@@ -163,7 +163,7 @@ class Api
         $this->_lava = lava_instance();
         $this->_lava->call->library('cache');
         $this->_lava->config->load('api');
-        $this->_lava->database();
+        $this->_lava->call->database();
 
         if (!config_item('api_helper_enabled')) {
             show_error('Api Helper is disabled or set up incorrectly.');
@@ -230,7 +230,7 @@ class Api
      */
     public function body()
     {
-        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
 
         if (stripos($contentType, 'application/json') !== false) {
             $input = json_decode(file_get_contents('php://input'), true);

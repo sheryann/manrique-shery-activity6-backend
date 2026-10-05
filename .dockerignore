@@ -1,0 +1,9 @@
+.env
+.git
+.gitignore
+runtime/cache
+runtime/logs
+vendor
+node_modules
+.dockerignore
+Dockerfile
