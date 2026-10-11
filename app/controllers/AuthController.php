@@ -170,113 +170,162 @@ class AuthController extends Controller
         ], 200);
     }
 
-    public function update()
-    {
-        $this->api->require_method('PUT');
+   
 
-        $this->api->require_jwt();
+public function update($id)
+{
+    $this->api->require_method('PUT');
 
-        $body = $this->api->body();
+    $this->api->require_jwt();
 
-        $id       = $body['id'] ?? '';
-        $username = trim($body['username'] ?? '');
-        $email    = trim($body['email'] ?? '');
-        $password = $body['password'] ?? '';
-        $role     = $body['role'] ?? 'user';
+    if (!filter_var($id, FILTER_VALIDATE_INT) || $id < 1) {
+        $this->api->respond_error(
+            'A valid user ID is required.',
+            422
+        );
+    }
 
-        if ($id === '' || $username === '' || $email === '') {
+    $stmt = $this->db->raw(
+        "SELECT id FROM users WHERE id = ? LIMIT 1",
+        [$id]
+    );
+
+    if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
+        $this->api->respond_error('User not found.', 404);
+    }
+
+    $body = $this->api->body();
+
+    $username = trim($body['username'] ?? '');
+    $email    = trim($body['email'] ?? '');
+    $password = $body['password'] ?? '';
+    $role     = $body['role'] ?? '';
+
+    $updates = [];
+    $params  = [];
+
+    if ($username !== '') {
+        $updates[] = 'username = ?';
+        $params[] = $username;
+    }
+
+    if ($email !== '') {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->api->respond_error(
-                'ID, username and email are required.',
+                'Please provide a valid email address.',
                 422
             );
         }
 
-        $stmt = $this->db->raw(
-            "SELECT id FROM users WHERE id = ? LIMIT 1",
-            [$id]
-        );
-
-        if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
-            $this->api->respond_error('User not found.', 404);
-        }
-
-        $stmt = $this->db->raw(
-            "SELECT id FROM users
-             WHERE (username = ? OR email = ?)
-             AND id != ?
-             LIMIT 1",
-            [$username, $email, $id]
-        );
-
-        if ($stmt->fetch(PDO::FETCH_ASSOC)) {
-            $this->api->respond_error(
-                'Username or email already exists.',
-                409
-            );
-        }
-
-        if ($password !== '') {
-            $this->db->raw(
-                "UPDATE users
-                 SET username = ?, email = ?, password = ?, role = ?
-                 WHERE id = ?",
-                [
-                    $username,
-                    $email,
-                    password_hash($password, PASSWORD_DEFAULT),
-                    $role,
-                    $id
-                ]
-            );
-        } else {
-            $this->db->raw(
-                "UPDATE users
-                 SET username = ?, email = ?, role = ?
-                 WHERE id = ?",
-                [$username, $email, $role, $id]
-            );
-        }
-
-        $this->api->respond([
-            'message' => 'User updated successfully.'
-        ], 200);
+        $updates[] = 'email = ?';
+        $params[] = $email;
     }
 
-    public function delete()
-    {
-        $this->api->require_method('DELETE');
-
-        $this->api->require_jwt();
-
-        $body = $this->api->body();
-
-        $id = $body['id'] ?? '';
-
-        if ($id === '' || !filter_var($id, FILTER_VALIDATE_INT) || $id < 1) {
-            $this->api->respond_error(
-                'A valid user ID is required.',
-                422
-            );
-        }
-
-        $stmt = $this->db->raw(
-            "SELECT id FROM users WHERE id = ? LIMIT 1",
-            [$id]
-        );
-
-        if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
-            $this->api->respond_error('User not found.', 404);
-        }
-
-        $this->db->raw(
-            "DELETE FROM users WHERE id = ?",
-            [$id]
-        );
-
-        $this->api->respond([
-            'message' => 'User deleted successfully.'
-        ], 200);
+    if ($password !== '') {
+        $updates[] = 'password = ?';
+        $params[] = password_hash($password, PASSWORD_DEFAULT);
     }
+
+    if ($role !== '') {
+        $updates[] = 'role = ?';
+        $params[] = $role;
+    }
+
+    if (empty($updates)) {
+        $this->api->respond_error(
+            'At least one field must be provided for update.',
+            422
+        );
+    }
+
+    if ($username !== '' || $email !== '') {
+        $checkUsername = $username !== ''
+            ? $username
+            : null;
+
+        $checkEmail = $email !== ''
+            ? $email
+            : null;
+
+        if ($checkUsername !== null) {
+            $stmt = $this->db->raw(
+                "SELECT id FROM users
+                 WHERE username = ? AND id != ?
+                 LIMIT 1",
+                [$checkUsername, $id]
+            );
+
+            if ($stmt->fetch(PDO::FETCH_ASSOC)) {
+                $this->api->respond_error(
+                    'Username already exists.',
+                    409
+                );
+            }
+        }
+
+        if ($checkEmail !== null) {
+            $stmt = $this->db->raw(
+                "SELECT id FROM users
+                 WHERE email = ? AND id != ?
+                 LIMIT 1",
+                [$checkEmail, $id]
+            );
+
+            if ($stmt->fetch(PDO::FETCH_ASSOC)) {
+                $this->api->respond_error(
+                    'Email already exists.',
+                    409
+                );
+            }
+        }
+    }
+
+    $params[] = $id;
+
+    $sql = "UPDATE users SET "
+         . implode(', ', $updates)
+         . " WHERE id = ?";
+
+    $this->db->raw($sql, $params);
+
+    $this->api->respond([
+        'message' => 'User updated successfully.'
+    ], 200);
+}
+
+
+    
+public function delete($id)
+{
+    $this->api->require_method('DELETE');
+
+    $this->api->require_jwt();
+
+    if (!filter_var($id, FILTER_VALIDATE_INT) || $id < 1) {
+        $this->api->respond_error(
+            'A valid user ID is required.',
+            422
+        );
+    }
+
+    $stmt = $this->db->raw(
+        "SELECT id FROM users WHERE id = ? LIMIT 1",
+        [$id]
+    );
+
+    if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
+        $this->api->respond_error('User not found.', 404);
+    }
+
+    $this->db->raw(
+        "DELETE FROM users WHERE id = ?",
+        [$id]
+    );
+
+    $this->api->respond([
+        'message' => 'User deleted successfully.'
+    ], 200);
+}
 
     public function logout()
     {
@@ -290,4 +339,26 @@ class AuthController extends Controller
 
         $this->api->respond(['message' => 'Logged out successfully.']);
     }
+}
+
+public function options()
+{
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+    $allowedOrigins = [
+        'https://api-tester.marasigan.dev',
+        'http://localhost:5173',
+        'http://localhost:5174',
+    ];
+
+    if (in_array($origin, $allowedOrigins, true)) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+    }
+
+    header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+    header('Access-Control-Max-Age: 86400');
+
+    http_response_code(204);
+    exit;
 }
