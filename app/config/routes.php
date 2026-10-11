@@ -51,7 +51,9 @@ $router->post('login', 'AuthController::login');
 $router->post('register', 'AuthController::register');
 $router->post('logout', 'AuthController::logout');
 $router->get('profile', 'AuthController::profile');
-
+$router->get('lists', 'AuthController::list');
+$router->put('update', 'AuthController::update');
+$router->delete('delete', 'AuthController::delete');
 
 
 // Products API Routes (protected by JWT)
