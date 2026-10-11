@@ -50,6 +50,9 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 $router->post('login', 'AuthController::login');
 $router->post('register', 'AuthController::register');
 $router->post('logout', 'AuthController::logout');
+$router->get('profile', 'AuthController::profile');
+
+
 
 // Products API Routes (protected by JWT)
 $router->get('products', 'ProductsController::index');
