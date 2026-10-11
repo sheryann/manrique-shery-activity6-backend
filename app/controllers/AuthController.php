@@ -78,6 +78,37 @@ class AuthController extends Controller
     ], 200);
 }
 
+    public function profile()
+{
+    $auth = $this->api->require_jwt();
+
+    $userId = $auth['sub'] ?? null;
+
+    if (!$userId) {
+        $this->api->respond_error('Invalid access token.', 401);
+    }
+
+    $stmt = $this->db->raw(
+        'SELECT id, username, email, role, created_at
+         FROM users
+         WHERE id = ?
+         LIMIT 1',
+        [$userId]
+    );
+
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user) {
+        $this->api->respond_error('User not found.', 404);
+    }
+
+    $this->api->respond([
+        'status'  => true,
+        'message' => 'Profile retrieved successfully.',
+        'data'    => $user
+    ], 200);
+}
+
     public function register()
     {
         $this->api->require_method('POST');
