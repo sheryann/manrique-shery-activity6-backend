@@ -174,22 +174,19 @@ class AuthController extends Controller
     {
         $this->api->require_method('PUT');
 
-        $auth = $this->api->require_jwt();
-
-        if (($auth['role'] ?? '') !== 'admin') {
-            $this->api->respond_error(
-                'Access denied. Admin privileges required.',
-                403
-            );
-        }
+        $this->api->require_jwt();
 
         $body = $this->api->body();
 
-        $id = $body['id'] ?? null;
+        $id       = $body['id'] ?? '';
+        $username = trim($body['username'] ?? '');
+        $email    = trim($body['email'] ?? '');
+        $password = $body['password'] ?? '';
+        $role     = $body['role'] ?? 'user';
 
-        if (!$id || !filter_var($id, FILTER_VALIDATE_INT) || $id < 1) {
+        if ($id === '' || $username === '' || $email === '') {
             $this->api->respond_error(
-                'A valid user ID is required.',
+                'ID, username and email are required.',
                 422
             );
         }
@@ -201,46 +198,6 @@ class AuthController extends Controller
 
         if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
             $this->api->respond_error('User not found.', 404);
-        }
-
-        $username = trim($body['username'] ?? '');
-        $email    = trim($body['email'] ?? '');
-        $role     = trim($body['role'] ?? '');
-        $password = $body['password'] ?? '';
-        $isActive = $body['is_active'] ?? null;
-
-        if (
-            $username === '' ||
-            $email === '' ||
-            $role === ''
-        ) {
-            $this->api->respond_error(
-                'Username, email, and role are required.',
-                422
-            );
-        }
-
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->api->respond_error(
-                'Please provide a valid email address.',
-                422
-            );
-        }
-
-        $allowedRoles = ['admin', 'user'];
-
-        if (!in_array($role, $allowedRoles, true)) {
-            $this->api->respond_error('Invalid role.', 422);
-        }
-
-        if (
-            $isActive !== null &&
-            !in_array($isActive, [0, 1, '0', '1', true, false], true)
-        ) {
-            $this->api->respond_error(
-                'is_active must be 0 or 1.',
-                422
-            );
         }
 
         $stmt = $this->db->raw(
@@ -258,45 +215,29 @@ class AuthController extends Controller
             );
         }
 
-        if ($isActive === null) {
-            $stmt = $this->db->raw(
-                "SELECT is_active FROM users WHERE id = ?",
-                [$id]
-            );
-
-            $currentUser = $stmt->fetch(PDO::FETCH_ASSOC);
-            $isActive = $currentUser['is_active'];
-        }
-
-        $isActive = (int) $isActive;
-
         if ($password !== '') {
             $this->db->raw(
                 "UPDATE users
-                 SET username = ?, email = ?, role = ?,
-                     password = ?, is_active = ?
+                 SET username = ?, email = ?, password = ?, role = ?
                  WHERE id = ?",
                 [
                     $username,
                     $email,
-                    $role,
                     password_hash($password, PASSWORD_DEFAULT),
-                    $isActive,
+                    $role,
                     $id
                 ]
             );
         } else {
             $this->db->raw(
                 "UPDATE users
-                 SET username = ?, email = ?, role = ?,
-                     is_active = ?
+                 SET username = ?, email = ?, role = ?
                  WHERE id = ?",
-                [$username, $email, $role, $isActive, $id]
+                [$username, $email, $role, $id]
             );
         }
 
         $this->api->respond([
-            'status'  => true,
             'message' => 'User updated successfully.'
         ], 200);
     }
@@ -305,32 +246,16 @@ class AuthController extends Controller
     {
         $this->api->require_method('DELETE');
 
-        $auth = $this->api->require_jwt();
-
-        if (($auth['role'] ?? '') !== 'admin') {
-            $this->api->respond_error(
-                'Access denied. Admin privileges required.',
-                403
-            );
-        }
+        $this->api->require_jwt();
 
         $body = $this->api->body();
 
-        $id = $body['id'] ?? null;
+        $id = $body['id'] ?? '';
 
-        if (!$id || !filter_var($id, FILTER_VALIDATE_INT) || $id < 1) {
+        if ($id === '' || !filter_var($id, FILTER_VALIDATE_INT) || $id < 1) {
             $this->api->respond_error(
                 'A valid user ID is required.',
                 422
-            );
-        }
-
-        $currentUserId = $auth['sub'] ?? null;
-
-        if ((string) $id === (string) $currentUserId) {
-            $this->api->respond_error(
-                'You cannot delete your own account.',
-                403
             );
         }
 
@@ -349,11 +274,9 @@ class AuthController extends Controller
         );
 
         $this->api->respond([
-            'status'  => true,
             'message' => 'User deleted successfully.'
         ], 200);
     }
-
 
     public function logout()
     {
