@@ -46,30 +46,113 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 
 //$router->get('/', 'Welcome::index');
 
-// Auth API Routes
+$router->post('create', 'AuthController::register');
+
 $router->post('login', 'AuthController::login');
-$router->post('register', 'AuthController::register');
-$router->post('logout', 'AuthController::logout');
+
 $router->get('profile', 'AuthController::profile');
-$router->get('list', 'AuthController::list');
+
+$router->get('list', 'AuthController::list_users');
+
 $router->put('update/{id}', 'AuthController::update');
+
 $router->delete('delete/{id}', 'AuthController::delete');
+
+$router->post('refresh', 'AuthController::refresh_token');
+
+$router->post('logout', 'AuthController::logout');
+
+
+$router->options('create', 'AuthController::options');
+
+$router->options('login', 'AuthController::options');
+
+$router->options('profile', 'AuthController::options');
+
+$router->options('list', 'AuthController::options');
+
 $router->options('update/{id}', 'AuthController::options');
 
+$router->options('delete/{id}', 'AuthController::options');
+
+$router->options('refresh', 'AuthController::options');
+
+$router->options('logout', 'AuthController::options');
 
 
-// Products API Routes (protected by JWT)
-$router->get('products', 'ProductsController::index');
-$router->get('products/{id}', 'ProductsController::show');
-$router->post('products', 'ProductsController::create');
-$router->put('products/{id}', 'ProductsController::update');
-$router->patch('products/{id}', 'ProductsController::update');
-$router->delete('products/{id}', 'ProductsController::delete');
 
-// Migration Routes
-$router->get('create-migration/{migration_class}', 'MigrationController::create_migration');
-$router->get('migrate', 'MigrationController::migrate');
-$router->get('rollback', 'MigrationController::rollback');
-$router->get('rollback-all', 'MigrationController::rollback_all');
-$router->get('refresh', 'MigrationController::refresh');
-$router->get('status', 'MigrationController::status');
+
+$router->get(
+    'products',
+    'ProductsController::index'
+);
+
+$router->get(
+    'products/{id}',
+    'ProductsController::show'
+);
+
+$router->post(
+    'products',
+    'ProductsController::create'
+);
+
+$router->put(
+    'products/{id}',
+    'ProductsController::update'
+);
+
+$router->patch(
+    'products/{id}',
+    'ProductsController::update'
+);
+
+$router->delete(
+    'products/{id}',
+    'ProductsController::delete'
+);
+
+
+$router->options(
+    'products',
+    'AuthController::options'
+);
+
+$router->options(
+    'products/{id}',
+    'AuthController::options'
+);
+
+
+
+$router->get(
+    'create-migration/{migration_class}',
+    'MigrationController::create_migration'
+);
+
+$router->get(
+    'migrate',
+    'MigrationController::migrate'
+);
+
+$router->get(
+    'rollback',
+    'MigrationController::rollback'
+);
+
+$router->get(
+    'rollback-all',
+    'MigrationController::rollback_all'
+);
+
+
+$router->get(
+    'migration-refresh',
+    'MigrationController::refresh'
+);
+
+$router->get(
+    'status',
+    'MigrationController::status'
+);
+
