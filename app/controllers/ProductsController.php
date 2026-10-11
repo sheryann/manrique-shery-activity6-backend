@@ -47,7 +47,7 @@ class ProductsController extends Controller
         $product_name = $body['product_name'] ?? '';
         $description  = $body['description'] ?? '';
         $price        = $body['price'] ?? '';
-        $quantity     = $body['quantity'] ?? 0;
+        $quantity     = isset($body['quantity']) && $body['quantity'] !== '' ? (int) $body['quantity'] : 0;
 
         if ($product_name === '' || $price === '') {
             $this->api->respond_error('product_name and price are required.', 422);
@@ -63,7 +63,9 @@ class ProductsController extends Controller
 
     public function update($id)
     {
-        $this->api->require_method('PUT');
+        if ($_SERVER['REQUEST_METHOD'] !== 'PUT' && $_SERVER['REQUEST_METHOD'] !== 'PATCH') {
+            $this->api->respond_error('Method Not Allowed', 405);
+        }
 
         $stmt = $this->db->raw("SELECT id FROM products WHERE id = ? LIMIT 1", [$id]);
 
@@ -76,7 +78,7 @@ class ProductsController extends Controller
         $product_name = $body['product_name'] ?? '';
         $description  = $body['description'] ?? '';
         $price        = $body['price'] ?? '';
-        $quantity     = $body['quantity'] ?? 0;
+        $quantity     = isset($body['quantity']) && $body['quantity'] !== '' ? (int) $body['quantity'] : 0;
 
         if ($product_name === '' || $price === '') {
             $this->api->respond_error('product_name and price are required.', 422);

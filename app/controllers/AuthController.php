@@ -12,53 +12,71 @@ class AuthController extends Controller
     }
 
     public function login()
-    {
-        $this->api->require_method('POST');
+{
+    $this->api->require_method('POST');
 
-        $body = $this->api->body();
+    $body = $this->api->body();
 
-        $username = $body['username'] ?? '';
-        $password = $body['password'] ?? '';
+    $username = trim($body['username'] ?? '');
+    $password = $body['password'] ?? '';
 
-        if ($username === '' || $password === '') {
-            $this->api->respond_error('Username and password are required.', 422);
-        }
-
-        $stmt = $this->db->raw(
-            "SELECT * FROM users WHERE (username = ? OR email = ?) LIMIT 1",
-            [$username, $username]
+    if ($username === '' || $password === '') {
+        $this->api->respond_error(
+            'Username and password are required.',
+            422
         );
-
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$user || !password_verify($password, $user['password'])) {
-            $this->api->respond_error('Invalid username or password.', 401);
-        }
-
-        if (isset($user['is_active']) && !$user['is_active']) {
-            $this->api->respond_error('Account is disabled.', 403);
-        }
-
-        $tokens = $this->api->issue_tokens([
-            'id'     => $user['id'],
-            'role'   => $user['role'] ?? 'user',
-            'scopes' => ['read', 'write', 'delete'],
-        ]);
-
-        $this->api->respond([
-            'message'       => 'Login successful.',
-            'access_token'  => $tokens['access_token'],
-            'refresh_token' => $tokens['refresh_token'],
-            'token_type'    => $tokens['token_type'],
-            'expires_in'    => $tokens['expires_in'],
-            'user'          => [
-                'id'       => $user['id'],
-                'username' => $user['username'],
-                'email'    => $user['email'],
-                'role'     => $user['role'],
-            ],
-        ]);
     }
+
+    $stmt = $this->db->raw(
+        "SELECT * FROM users
+         WHERE (username = ? OR email = ?)
+         LIMIT 1",
+        [$username, $username]
+    );
+
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user || !password_verify($password, $user['password'])) {
+        $this->api->respond_error(
+            'Invalid username or password.',
+            401
+        );
+    }
+
+    if (isset($user['is_active']) && !$user['is_active']) {
+        $this->api->respond_error(
+            'Account is disabled.',
+            403
+        );
+    }
+
+    $tokens = $this->api->issue_tokens([
+        'id'     => $user['id'],
+        'role'   => $user['role'] ?? 'user',
+        'scopes' => ['read', 'write', 'delete'],
+    ]);
+
+    $this->api->respond([
+        'message' => 'Login successful.',
+
+        // For frontend applications
+        'access_token'  => $tokens['access_token'],
+        'refresh_token' => $tokens['refresh_token'],
+        'token_type'    => $tokens['token_type'],
+        'expires_in'    => $tokens['expires_in'],
+
+        // IMPORTANT:
+        // LavaLust API Tester expects data.tokens
+        'tokens' => $tokens,
+
+        'user' => [
+            'id'       => $user['id'],
+            'username' => $user['username'],
+            'email'    => $user['email'],
+            'role'     => $user['role'] ?? 'user',
+        ],
+    ], 200);
+}
 
     public function register()
     {
